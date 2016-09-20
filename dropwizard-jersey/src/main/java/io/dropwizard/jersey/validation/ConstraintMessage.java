@@ -79,14 +79,12 @@ public class ConstraintMessage {
             return prefix + " " + v.getMessage();
         }
 
-        // Check if the violation occurred on a *Param annotation and if so,
-        // return a human friendly error (eg. "Query param xxx may not be null")
-        final Optional<String> memberName = getMemberName(v, invocable);
-        if (memberName.isPresent()) {
-            return memberName.get() + " " + v.getMessage();
+        // Trim "params." from the front of the parameter name if present
+        String path = v.getPropertyPath().toString();
+        if (path.startsWith("params.")) {
+            path = path.substring(7);
         }
-
-        return v.getPropertyPath() + " " + v.getMessage();
+        return path + " " + v.getMessage();
     }
 
     /**
@@ -114,41 +112,6 @@ public class ConstraintMessage {
     }
 
     /**
-     * Gets a method parameter (or a parameter field) name, if the violation raised in it.
-     */
-    private static Optional<String> getMemberName(ConstraintViolation<?> violation, Invocable invocable) {
-        final int size = Iterables.size(violation.getPropertyPath());
-        if (size < 2) {
-            return Optional.empty();
-        }
-
-        final Path.Node parent = Iterables.get(violation.getPropertyPath(), size - 2);
-        final Path.Node member = Iterables.getLast(violation.getPropertyPath());
-        switch (parent.getKind()) {
-            case PARAMETER:
-                // Constraint violation most likely failed with a BeanParam
-                final List<Parameter> parameters = invocable.getParameters();
-                final Parameter param = parameters.get(parent.as(Path.ParameterNode.class).getParameterIndex());
-
-                // Extract the failing *Param annotation inside the Bean Param
-                if (param.getSource().equals(Parameter.Source.BEAN_PARAM)) {
-                    final Field field = FieldUtils.getField(param.getRawType(), member.getName(), true);
-                    return getMemberName(field.getDeclaredAnnotations());
-                }
-
-                return Optional.empty();
-            case METHOD:
-                // Constraint violation occurred directly on a function
-                // parameter annotated with *Param
-                final Method method = invocable.getHandlingMethod();
-                final int paramIndex = member.as(Path.ParameterNode.class).getParameterIndex();
-                return getMemberName(method.getParameterAnnotations()[paramIndex]);
-            default:
-                return Optional.empty();
-        }
-    }
-
-    /**
      * Gets the method return value name, if the violation is raised in it
      */
     private static Optional<String> getMethodReturnValueName(ConstraintViolation<?> violation) {
@@ -164,31 +127,6 @@ public class ConstraintMessage {
         }
 
         return returnValueNames >= 0 ? Optional.of(result.toString()) : Optional.empty();
-    }
-
-    /**
-     * Derives member's name and type from it's annotations
-     */
-    private static Optional<String> getMemberName(Annotation[] memberAnnotations) {
-        for (Annotation a : memberAnnotations) {
-            if (a instanceof QueryParam) {
-                return Optional.of("query param " + ((QueryParam) a).value());
-            } else if (a instanceof PathParam) {
-                return Optional.of("path param " + ((PathParam) a).value());
-            } else if (a instanceof HeaderParam) {
-                return Optional.of("header " + ((HeaderParam) a).value());
-            } else if (a instanceof CookieParam) {
-                return Optional.of("cookie " + ((CookieParam) a).value());
-            } else if (a instanceof FormParam) {
-                return Optional.of("form field " + ((FormParam) a).value());
-            } else if (a instanceof Context) {
-                return Optional.of("context");
-            } else if (a instanceof MatrixParam) {
-                return Optional.of("matrix param " + ((MatrixParam) a).value());
-            }
-        }
-
-        return Optional.empty();
     }
 
     private static boolean isValidationMethod(ConstraintViolation<?> v) {
