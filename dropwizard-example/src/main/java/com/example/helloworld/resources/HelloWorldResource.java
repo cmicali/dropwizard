@@ -37,6 +37,12 @@ public class HelloWorldResource {
         this.counter = new AtomicLong();
     }
 
+    public enum Choice {
+        This,
+        That,
+        Other
+    }
+
     @GET
     @Timed(name = "get-requests")
     @CacheControl(maxAge = 1, maxAgeUnit = TimeUnit.DAYS)
@@ -67,10 +73,12 @@ public class HelloWorldResource {
     @Path("/params")
     public Map<String, Object> params(
         @UnwrapValidatedValue(false) @NotNull @QueryParam("limit") LongParam limit,
+        @NotNull @QueryParam("choice") Choice choice,
         @QueryParam("date") Optional<DateTimeParam> dateTimeParam
     ) {
         Map<String, Object> result = Maps.newHashMap();
         result.put("limit", limit.get());
+        result.put("choice", choice);
         return result;
     }
 

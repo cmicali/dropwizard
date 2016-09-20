@@ -11,6 +11,7 @@ import io.dropwizard.jersey.caching.CacheControlledResponseFeature;
 import io.dropwizard.jersey.params.AbstractParamConverterProvider;
 import io.dropwizard.jersey.params.NonEmptyStringParamFeature;
 import io.dropwizard.jersey.sessions.SessionFactoryProvider;
+import io.dropwizard.jersey.validation.ValidatingEnumParamConverterProvider;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.server.ServerProperties;
 import org.glassfish.jersey.server.model.Resource;
@@ -46,6 +47,7 @@ public class DropwizardResourceConfig extends ResourceConfig {
         this(true, null);
     }
 
+    @SuppressWarnings("unchecked")
     public DropwizardResourceConfig(boolean testOnly, MetricRegistry metricRegistry) {
         super();
 
@@ -70,6 +72,7 @@ public class DropwizardResourceConfig extends ResourceConfig {
         register(io.dropwizard.jersey.optional.OptionalParamFeature.class);
         register(NonEmptyStringParamFeature.class);
         register(AbstractParamConverterProvider.class);
+        register(new ValidatingEnumParamConverterProvider(this));
         register(new SessionFactoryProvider.Binder());
     }
 
@@ -97,7 +100,7 @@ public class DropwizardResourceConfig extends ResourceConfig {
      * @return all registered types
      */
     @VisibleForTesting
-    Set<Class<?>> allClasses() {
+    public Set<Class<?>> allClasses() {
         final Set<Class<?>> allClasses = new HashSet<>(getClasses());
         for (Object singleton : getSingletons()) {
             allClasses.add(singleton.getClass());

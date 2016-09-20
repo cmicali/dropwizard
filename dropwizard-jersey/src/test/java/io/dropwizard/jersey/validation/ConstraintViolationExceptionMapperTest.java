@@ -578,4 +578,21 @@ public class ConstraintViolationExceptionMapperTest extends JerseyTest {
         assertThat(response.getStatus()).isEqualTo(200);
     }
 
+    @Test
+    public void testEnumParam() {
+        Response response = target("/valid/enumParam")
+            .request()
+            .get();
+        assertThat(response.getStatus()).isEqualTo(400);
+        assertThat(response.readEntity(String.class))
+            .containsOnlyOnce("query param choice may not be null");
+        response = target("/valid/enumParam")
+            .queryParam("choice", "invalid")
+            .request()
+            .get();
+        assertThat(response.getStatus()).isEqualTo(400);
+        assertThat(response.readEntity(String.class))
+            .containsOnlyOnce("query param choice must be one of [OptionA, OptionB, OptionC]");
+    }
+
 }
