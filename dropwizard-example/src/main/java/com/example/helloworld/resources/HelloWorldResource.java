@@ -3,18 +3,23 @@ package com.example.helloworld.resources;
 import com.codahale.metrics.annotation.Timed;
 import com.example.helloworld.api.Saying;
 import com.example.helloworld.core.Template;
+import com.google.common.collect.Maps;
 import io.dropwizard.jersey.caching.CacheControl;
 import io.dropwizard.jersey.params.DateTimeParam;
+import io.dropwizard.jersey.params.LongParam;
+import org.hibernate.validator.valuehandling.UnwrapValidatedValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -57,4 +62,17 @@ public class HelloWorldResource {
             return null;
         }
     }
+
+    @GET
+    @Path("/params")
+    public Map<String, Object> params(
+        @UnwrapValidatedValue(false) @NotNull @QueryParam("limit") LongParam limit,
+        @QueryParam("date") Optional<DateTimeParam> dateTimeParam
+    ) {
+        Map<String, Object> result = Maps.newHashMap();
+        result.put("limit", limit.get());
+        return result;
+    }
+
+
 }

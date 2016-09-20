@@ -16,16 +16,7 @@ import javax.validation.ConstraintViolation;
 import javax.validation.ElementKind;
 import javax.validation.Path;
 import javax.validation.metadata.ConstraintDescriptor;
-import javax.ws.rs.CookieParam;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.HeaderParam;
-import javax.ws.rs.MatrixParam;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -79,12 +70,14 @@ public class ConstraintMessage {
             return prefix + " " + v.getMessage();
         }
 
-        // Trim "params." from the front of the parameter name if present
-        String path = v.getPropertyPath().toString();
-        if (path.startsWith("params.")) {
-            path = path.substring(7);
+        // Get the leaf node in the path, so we only show the parameter name
+        // Check if the violation occurred on a *Param annotation and if so,
+        // return a human friendly error (eg. "Query param xxx may not be null")
+        final Optional<String> memberName = getMemberName(v, invocable);
+        if (memberName.isPresent()) {
+            return memberName.get() + " " + v.getMessage();
         }
-        return path + " " + v.getMessage();
+        return v.getPropertyPath() + " " + v.getMessage();
     }
 
     /**
@@ -108,6 +101,30 @@ public class ConstraintMessage {
                 break;
         }
 
+        return Optional.empty();
+    }
+
+    private static Optional<String> getMemberName(ConstraintViolation<?> violation, Invocable invocable) {
+        final int size = Iterables.size(violation.getPropertyPath());
+        if (size < 2) {
+            return Optional.empty();
+        }
+        final Path.Node parent = Iterables.get(violation.getPropertyPath(), size - 2);
+        final Path.Node member = Iterables.getLast(violation.getPropertyPath());
+        switch (parent.getKind()) {
+            case PARAMETER:
+                // Constraint violation most likely failed with a BeanParam
+                final List<Parameter> parameters = invocable.getParameters();
+                final Parameter param = parameters.get(parent.as(Path.ParameterNode.class).getParameterIndex());
+                // Extract the failing *Param annotation inside the Bean Param
+                if (param.getSource().equals(Parameter.Source.BEAN_PARAM)) {
+                    final Field field = FieldUtils.getField(param.getRawType(), member.getName(), true);
+                    return JerseyParameterNameProvider.getParameterNameFromAnnotations(field.getDeclaredAnnotations());
+                }
+                break;
+            case METHOD:
+                return Optional.of(member.getName());
+        }
         return Optional.empty();
     }
 

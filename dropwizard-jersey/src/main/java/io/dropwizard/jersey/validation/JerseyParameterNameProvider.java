@@ -1,17 +1,18 @@
 package io.dropwizard.jersey.validation;
 
-import org.hibernate.validator.internal.engine.DefaultParameterNameProvider;
+import org.hibernate.validator.parameternameprovider.ReflectionParameterNameProvider;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class JerseyParameterNameProvider extends DefaultParameterNameProvider {
+public class JerseyParameterNameProvider extends ReflectionParameterNameProvider {
 
     @Override
     public List<String> getParameterNames(Constructor<?> constructor) {
@@ -20,10 +21,12 @@ public class JerseyParameterNameProvider extends DefaultParameterNameProvider {
 
     @Override
     public List<String> getParameterNames(Method method) {
+        Parameter[] parameters = method.getParameters();
         Annotation[][] parameterAnnotations = method.getParameterAnnotations();
         List<String> names = new ArrayList<>( parameterAnnotations.length );
-        for (Annotation[] annotations : parameterAnnotations) {
-            String name = getParameterNameFromAnnotations(annotations).orElse("arg" + (names.size() + 1));
+        for (int i = 0; i < parameterAnnotations.length; i++) {
+            Annotation[] annotations = parameterAnnotations[i];
+            String name = getParameterNameFromAnnotations(annotations).orElse(parameters[i].getName());
             names.add(name);
         }
         return names;
